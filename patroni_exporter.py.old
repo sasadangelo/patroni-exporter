@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Patroni exporter.
 Collects metrics from Patroni (https://github.com/zalando/patroni)
@@ -29,11 +29,13 @@ import requests
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('patroni-exporter')
 
+
 class PatroniCollector:
     def __init__(self, url: str, timeout: int, verify: str):
         self.url = url
         self.scrape = {}
-        self.data = defaultdict(dict)
+        self.data: defaultdict[str, Dict[str, Union[str, int, List]]]\
+            = defaultdict(dict)
         self.timeout = timeout
         self.requests_verify = next(map(
             lambda v: v.lower() == 'true' if v in ('true', 'false') else v,
@@ -48,7 +50,7 @@ class PatroniCollector:
 
         :return:
         """
-        logger.debug('Scraping Patroni API at %s.', {self.url})
+        logger.debug(f'Scraping Patroni API at {self.url}.')
         try:
             r = requests.get(self.url, timeout=self.timeout,
                              verify=self.requests_verify)
@@ -58,11 +60,12 @@ class PatroniCollector:
         except Exception as e:
             self.status = '503 Service Unavailable'
             self.scrape = {}
-            logger.error('Scraping of Patroni @ %s failed: %s', {self.url}, {e})
-        logger.debug("Scraped data: {m}".format(m=self.scrape))
+            logger.error(f'Scraping of Patroni @ {self.url} failed: {e}')
+        logger.debug(f'Scraped data: {self.scrape}')
+
     @staticmethod
     def to_timestamp(timestring: str) -> int:
-        logger.debug('Converting %s to unix timestamp', {timestring})
+        logger.debug(f'Converting {timestring} to unix timestamp')
         return int(parse(timestring).strftime('%s'))
 
     def preprocessing(self) -> None:
@@ -104,20 +107,20 @@ class PatroniCollector:
 
         # use direct mapping to populate data
         for data_key, scrape_key in direct_mapping.items():
-            logger.debug('Pre-processing %s', {data_key})
+            logger.debug(f'Pre-processing {data_key}')
             if scrape_key in self.scrape:
                 self.data[data_key] = self.scrape.pop(scrape_key)
 
         # use the rest of scrape data to populate data
         for key, values in scrape_mapping.items():
             for item in values:
-                logger.debug('Pre-processing %s', {item})
+                logger.debug(f'Pre-processing {item}')
                 if item in self.scrape:
                     self.data[key][item] = self.scrape.pop(item)
 
                 if item in {'pending_restart', 'cluster_unlocked', 'pause'} \
                         and item not in self.data[key]:
-                    logger.debug('`%s`` not in scrape, setting to False', {item})
+                    logger.debug(f'`{item}`` not in scrape, setting to False')
                     self.data[key][item] = False
                     continue
 
@@ -134,18 +137,18 @@ class PatroniCollector:
                         self.data[key][item]
                     )
 
-        logger.debug("Preprocessed data: {m}".format(m=self.data))
+        logger.debug(f'Preprocessed data: {self.data}')
 
         if self.scrape:
-            logger.warning('Not all metrics '
-                           'has been preprocessed: %s', {self.scrape})
+            logger.warning(f'Not all metrics '
+                           f'has been preprocessed: {self.scrape}')
 
     @staticmethod
     def _process_gauge(data: Dict, label: str) -> List[GaugeMetricFamily]:
         metrics = []
         for k, v in data.items():
-            g = GaugeMetricFamily('patroni_' + label + '_' + k,
-                                  label + ' gauge ' + k)
+            g = GaugeMetricFamily(f'patroni_{label}_{k}',
+                                  f'{label} gauge {k}')
             g.add_metric([k], float(v))
             metrics.append(g)
 
@@ -154,8 +157,8 @@ class PatroniCollector:
     @staticmethod
     def _process_info(data: Union[Dict, List[Dict]],
                       label: str) -> List[InfoMetricFamily]:
-        i = InfoMetricFamily('patroni_' + label,
-                             label + ' info')
+        i = InfoMetricFamily(f'patroni_{label}',
+                             f'{label} info')
 
         # to ensure we have an iterable of dicts
         # the info datasets are different, some are lists of dicts,
@@ -176,10 +179,10 @@ class PatroniCollector:
         metrics = {}
         for key, value in self.data.items():
             label, func_type = key.rsplit('_', 1)
-            func = getattr(self, '_process_' + func_type, None)
+            func = getattr(self, f'_process_{func_type}', None)
             if not func:
-                raise RuntimeError('Metric for {key} cannot be processed. '
-                                   'Required function not found')
+                raise RuntimeError(f'Metric for {key} cannot be processed. '
+                                   f'Required function not found')
             metrics[key] = func(value, label)
         return metrics
 
@@ -192,7 +195,7 @@ class PatroniCollector:
 
         sections = self.process_data()
         for name, metrics in sections.items():
-            logger.debug('Processing section %s', {name})
+            logger.debug(f'Processing section {name}')
             for metric in metrics:
                 yield metric
 
@@ -267,7 +270,7 @@ class PatroniExporter:
         # a hack because of the need to pass `-d` or '' via the systemd unit
         unknown = set(unknown) - {'', ' '}
         if unknown:
-            parser.error('Unknown arguments: {", ".join(unknown)}')
+            parser.error(f'Unknown arguments: {", ".join(unknown)}')
         return known
 
     def app(self, environ: Dict, start_response: Any) -> Iterable[ByteString]:
