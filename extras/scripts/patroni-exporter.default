@@ -1,4 +1,4 @@
-BIND=localhost
+BIND=0.0.0.0
 PORT=9547
 ADDRESS_FAMILY=AF_INET
 PATRONI_URL=http://localhost:8008/patroni
