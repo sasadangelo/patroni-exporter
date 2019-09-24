@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='patroni_exporter',
-    version='0.0.4',
+    version='0.0.6',
     description='Export Patroni metrics in Prometheus format',
     author='Jan Tomsa',
     author_email='ops@showmax.com',
