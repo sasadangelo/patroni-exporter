@@ -3,7 +3,7 @@ Description=Patroni exporter
 
 [Service]
 EnvironmentFile=/etc/default/patroni-exporter
-ExecStart=/path/to/patroni_exporter.py \
+ExecStart=/usr/local/patroni_exporter.py \
           --bind ${BIND} \
           --port ${PORT} \
           --address-family ${ADDRESS_FAMILY} \
